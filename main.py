@@ -1,25 +1,31 @@
-from flask import Flask
-from flask import request, jsonify
-from models.correct import Correct
 
-class App:
+from app.models.config_reader import ConfigReader
+from app.models.parser import QueryParser
+from app.models.judge.judger import Judger
+from app.models.learning.learner import MachineLearner
 
-	def __init__(self):
-		self.correcter = Correct()
-	
-	def search(self, text):
-		queries = self.correcter.predict(text)
-		print(queries)
-		return queries
+class Main:
 
-_app = App()
-app = Flask(__name__)
-@app.route("/", methods=['POST'])
-def search():
-    if request.method == "POST":
-        query = request.form.get('query')
-        data = _app.search(query)
-        return jsonify(isError=False, message="Success", statusCode=200, data=data), 200
+    def __init__(self):
+        configer = ConfigReader("./app/config/service.conf")
+        configer.parseFile()
+        configInfo = configer.config
+        dbHost, dbPort, dbName = configInfo["dbHost"], configInfo["dbPort"], configInfo["dbName"]
+        parser = QueryParser(dbHost, dbPort, dbName)
+        parser.loadModelCategory(configInfo["vectorFile"], configInfo["learnerModelFile"])
+        parser.loadWordCorrect(configInfo["wordCorrectFile"])
+        parser.loadSentenceCorrect(configInfo["sentenceCorrectFile"])
+        parser.loadSynonym()
+        history = [
+            "mongodb",
+            "sao Hoa",
+            "bong ma ben ngoai cua so",
+            "cai gi z troi",
+            "search ngu qua a"
+        ]
+        while True:
+            query = input("Enter your query: ")
+            print(parser.predict(query, history))
 
-if __name__ == '__main__':
-    app.run(host="127.0.0.1", port="8082")
+if __name__ == "__main__":
+    Main()
